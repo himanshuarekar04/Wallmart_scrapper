@@ -1,0 +1,199 @@
+{
+  "info": {
+    "name": "Walmart U.S. Live Product Scraper — POC",
+    "_postman_id": "walmart-scraper-poc-v1",
+    "description": "POC collection for the Walmart U.S. Live Product Scraper API.\n\nBase URL: http://127.0.0.1:8000\n\nEndpoints:\n1. GET /api/product/by-id/{item_id}  — fetch by Walmart item ID\n2. GET /api/product/by-url           — fetch by full product URL\n3. GET /api/product/by-name          — search by product name\n4. GET /health                       — liveness check",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "System",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Liveness probe. Returns {\"status\": \"ok\"} if the server is running."
+          },
+          "response": [
+            {
+              "name": "Health OK",
+              "status": "OK",
+              "code": 200,
+              "body": "{\"status\": \"ok\", \"service\": \"walmart-scraper-poc\"}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Product — By Item ID",
+      "item": [
+        {
+          "name": "Fetch Product by ID (AirPods Pro)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/product/by-id/2187337312",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "product", "by-id", "2187337312"]
+            },
+            "description": "Fetches live data for Apple AirPods Pro using Walmart item ID 2187337312.\n\nReplace the ID at the end of the path with any valid Walmart item ID.\n\nItem IDs can be found in the product URL:\nhttps://www.walmart.com/ip/Product-Name/**ITEM_ID**"
+          }
+        },
+        {
+          "name": "Fetch Product by ID (Custom — edit me)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/product/by-id/{{item_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "product", "by-id", "{{item_id}}"],
+              "variable": [
+                {
+                  "key": "item_id",
+                  "value": "2187337312",
+                  "description": "Replace with the desired Walmart item ID"
+                }
+              ]
+            },
+            "description": "Use the `item_id` variable in the path. Change the value to any Walmart numeric item ID."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Product — By URL",
+      "item": [
+        {
+          "name": "Fetch Product by URL (AirPods Pro)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/product/by-url?url=https://www.walmart.com/ip/Apple-AirPods-Pro-2nd-Generation/2187337312",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "product", "by-url"],
+              "query": [
+                {
+                  "key": "url",
+                  "value": "https://www.walmart.com/ip/Apple-AirPods-Pro-2nd-Generation/2187337312",
+                  "description": "Full Walmart product URL"
+                }
+              ]
+            },
+            "description": "Pass any valid Walmart product URL as the `url` query parameter.\n\nURL must start with: https://www.walmart.com/ip/"
+          }
+        },
+        {
+          "name": "Fetch Product by URL (Custom — edit me)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/product/by-url?url={{product_url}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "product", "by-url"],
+              "query": [
+                {
+                  "key": "url",
+                  "value": "{{product_url}}"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "product_url",
+                  "value": "https://www.walmart.com/ip/Apple-AirPods-Pro-2nd-Generation/2187337312",
+                  "description": "Replace with your target Walmart product URL"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Product — By Name (Search)",
+      "item": [
+        {
+          "name": "Search by Name — Apple AirPods Pro",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/product/by-name?q=Apple+AirPods+Pro",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "product", "by-name"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "Apple AirPods Pro",
+                  "description": "Product search query"
+                }
+              ]
+            },
+            "description": "Searches Walmart for the given product name and fetches full data for the first result.\n\nThis makes 2 requests internally:\n1. Walmart search page → extract first item ID\n2. Product page → full product data\n\nExpect ~5-10s response time."
+          }
+        },
+        {
+          "name": "Search by Name — Samsung TV",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/product/by-name?q=Samsung+65+inch+4K+TV",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "product", "by-name"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "Samsung 65 inch 4K TV"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search by Name (Custom — edit me)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/product/by-name?q={{search_query}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "product", "by-name"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{search_query}}"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "search_query",
+                  "value": "Apple AirPods Pro",
+                  "description": "Replace with your product search term"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
