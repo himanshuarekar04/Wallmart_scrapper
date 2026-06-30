@@ -187,13 +187,13 @@ def fetch_product_page(url: str, retries: int = 3) -> Optional[str]:
             verify_ssl = False if WALMART_PROXY_URL else True
             resp = session.get(url, timeout=30, allow_redirects=True, verify=verify_ssl, **imp_kwarg)
 
-            if "__NEXT_DATA__" in resp.text:
+            if resp.status_code in (200, 404) and "__NEXT_DATA__" in resp.text:
                 if resp.status_code != 200:
                     logger.warning(f"Received non-200 status code ({resp.status_code}) but found __NEXT_DATA__; continuing.")
                 logger.info(f"Successfully fetched page (size={len(resp.text)} bytes)")
                 return resp.text
             else:
-                logger.warning(f"Response missing __NEXT_DATA__ — status={resp.status_code}. Possible bot block page or invalid URL.")
+                logger.warning(f"Response failed verification — status={resp.status_code}, contains NEXT_DATA={'__NEXT_DATA__' in resp.text}. Treating as block/invalid URL.")
 
         except Exception as exc:
             logger.error(f"Request error on attempt {attempt}: {exc}")
