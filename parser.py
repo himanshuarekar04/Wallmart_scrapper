@@ -179,14 +179,55 @@ def _extract_ratings(product: dict) -> dict:
 
 def _extract_variants(product: dict) -> list[dict]:
     """
-    Walmart stores variants inside product["variantList"] or product["variants"].
-    Each variant contains its own price / availability / images.
+    Extract variant models. Walmart stores variants inside:
+    1. product["variantsMap"] (newer, detailed format mapping key -> details)
+    2. product["variantList"] or product["variants"] (older formats)
     """
+    models = []
+    
+    # Check if variantsMap exists (new format)
+    variants_map = product.get("variantsMap")
+    if isinstance(variants_map, dict) and variants_map:
+        # Build option name lookup from variantCriteria
+        opt_name_lookup = {}
+        for criterion in (product.get("variantCriteria") or []):
+            for val in (criterion.get("variantList") or []):
+                if val.get("id") and val.get("name"):
+                    opt_name_lookup[val["id"]] = val["name"]
+                    
+        for v_id, v_data in variants_map.items():
+            if not isinstance(v_data, dict):
+                continue
+            
+            # Map option ids to readable names (e.g. ["actual_color-sage", "hard_drive_capacity-256gb"] -> "Sage, 256GB")
+            names = [opt_name_lookup.get(opt_id, opt_id) for opt_id in v_data.get("variants", [])]
+            name = ", ".join(names)
+            
+            v_price_info = v_data.get("priceInfo") or {}
+            v_current_p = _price_float(_safe(v_price_info, "currentPrice", "price"))
+            v_was_p = _price_float(_safe(v_price_info, "wasPrice", "price"))
+            
+            status_val = v_data.get("availabilityStatus", "UNKNOWN")
+            in_stock = status_val in ("IN_STOCK", "AVAILABLE")
+            
+            v_images = _extract_images(v_data)
+            
+            models.append({
+                "variant_id":           str(v_id),
+                "name":                 name,
+                "price":                v_current_p,
+                "price_before_discount":v_was_p,
+                "in_stock":             in_stock,
+                "stock_status":         status_val,
+                "images":               v_images,
+            })
+        return models
+
+    # Fallback to older format (if variantsMap is missing)
     raw_variants = _safe(product, "variantList", default=None)
     if not raw_variants:
         raw_variants = _safe(product, "variants", default=[])
 
-    models = []
     for v in (raw_variants or []):
         if not isinstance(v, dict):
             continue
@@ -205,7 +246,6 @@ def _extract_variants(product: dict) -> list[dict]:
         v_was_p       = _price_float(_safe(v_price_info, "wasPrice", "price"))
         in_stock      = v.get("availabilityStatus", "") in ("IN_STOCK", "AVAILABLE")
 
-        # Images specific to this variant
         v_images = []
         for img in (v.get("images") or []):
             u = _resolve_image(img)
@@ -237,14 +277,15 @@ def _extract_attributes(product: dict, idml: dict) -> list[dict]:
     """
     attrs = []
 
-    # From product.specifications (list of {name, value})
-    for spec in (_safe(product, "specifications", default=[]) or []):
+    # Check idml.specifications first (new layout) or fallback to product.specifications
+    specs = _safe(idml, "specifications") or _safe(product, "specifications") or []
+    for spec in specs:
         if not isinstance(spec, dict):
             continue
         name  = spec.get("name") or spec.get("key")
         value = spec.get("value")
         if name and value:
-            attrs.append({"name": name, "value": str(value)})
+            attrs.append({"name": str(name), "value": str(value)})
 
     # From idml.modules (nested section → attributes list)
     if isinstance(idml, dict):
@@ -268,11 +309,25 @@ def _extract_attributes(product: dict, idml: dict) -> list[dict]:
 
 def _extract_categories(product: dict) -> list[dict]:
     cats = []
-    for cat in (_safe(product, "breadCrumb", default=[]) or []):
+    
+    # Check category.path first (new layout) or fallback to breadCrumb
+    path = _safe(product, "category", "path") or _safe(product, "breadCrumb") or []
+    
+    for cat in (path or []):
         if not isinstance(cat, dict):
             continue
+        
+        # Try to parse catid from url if missing (e.g. "/cp/cell-phones/1105910")
+        catid = cat.get("id") or cat.get("catId")
+        if not catid and cat.get("url"):
+            parts = cat["url"].split("/")
+            if parts:
+                last_part = parts[-1]
+                if last_part.isdigit():
+                    catid = int(last_part)
+                    
         cats.append({
-            "catid":        cat.get("id") or cat.get("catId"),
+            "catid":        catid,
             "display_name": cat.get("name") or cat.get("displayName"),
             "url":          cat.get("url"),
         })
